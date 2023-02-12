@@ -1,37 +1,36 @@
 package openai
-
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	log "github.com/sirupsen/logrus"
-	"github.com/wechatgpt/wechatbot/config"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"strings"
+"bytes"
+"encoding/json"
+"errors"
+"fmt"
+log "github.com/sirupsen/logrus"
+"github.com/wechatgpt/wechatbot/config"
+"io"
+"io/ioutil"
+"net/http"
+"strings"
 )
-
 // ChatGPTResponseBody 请求体
 type ChatGPTResponseBody struct {
-	ID      string                   `json:"id"`
-	Object  string                   `json:"object"`
-	Created int                      `json:"created"`
-	Model   string                   `json:"model"`
-	Choices []map[string]interface{} `json:"choices"`
-	Usage   map[string]interface{}   `json:"usage"`
+ID string json:"id"
+Object string json:"object"
+Created int json:"created"
+Model string json:"model"
+Choices []map[string]interface{} json:"choices"
+Usage map[string]interface{} json:"usage"
 }
-
 // ChatGPTRequestBody 响应体
 type ChatGPTRequestBody struct {
-	Model            string  `json:"model"`
-	Prompt           string  `json:"prompt"`
-	MaxTokens        int     `json:"max_tokens"`
-	Temperature      float32 `json:"temperature"`
-	TopP             int     `json:"top_p"`
-	FrequencyPenalty int     `json:"frequency_penalty"`
-	PresencePenalty  int     `json:"presence_penalty"`
+Model string json:"model"
+Prompt string json:"prompt"
+MaxTokens int json:"max_tokens"
+Temperature float32 json:"temperature"
+TopP int json:"top_p"
+FrequencyPenalty int json:"frequency_penalty"
+PresencePenalty int json:"presence_penalty"
+N int json:"n"
+Stop string json:"stop"
 }
 
 // Completions https://api.openai.com/v1/completions
@@ -56,36 +55,41 @@ type ChatGPTRequestBody struct {
 //
 // Completions sendMsg
 func Completions(msg string) (*string, error) {
-	apiKey := config.GetOpenAiApiKey()
-	if apiKey == nil {
-		return nil, errors.New("未配置apiKey")
-	}
+apiKey := config.GetOpenAiApiKey()
+if apiKey == nil {
+return nil, errors.New("未配置apiKey")
+}
 
-	requestBody := ChatGPTRequestBody{
-		Model:            "text-davinci-003",
-		Prompt:           msg,
-		MaxTokens:        4000,
-		Temperature:      0.7,
-		TopP:             1,
-		FrequencyPenalty: 0,
-		PresencePenalty:  0,
-	}
-	requestData, err := json.Marshal(requestBody)
+// 保存上下文信息的变量
+var conversationContext string
 
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	log.Printf("request openai json string : %v", string(requestData))
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/completions", bytes.NewBuffer(requestData))
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
+requestBody := ChatGPTRequestBody{
+	Model:            "text-davinci-003",
+	Prompt:           msg,
+	MaxTokens:        4000,
+	Temperature:      0.7,
+	TopP:             1,
+	FrequencyPenalty: 0,
+	PresencePenalty:  0,
+	N:                1,
+	Stop:             conversationContext,
+}
+requestData, err := json.Marshal(requestBody)
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *apiKey))
-	client := &http.Client{}
+if err != nil {
+	log.Println(err)
+	return nil, err
+}
+log.Printf("request openai json string : %v", string(requestData))
+req, err := http.NewRequest("POST", "https://api.openai.com/v1/completions", bytes.NewBuffer(requestData))
+if err != nil {
+	log.Println(err)
+	return nil, err
+}
+
+req.Header.Set("Content-Type", "application/json")
+req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", *apiKey))
+client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
 		return nil, err
